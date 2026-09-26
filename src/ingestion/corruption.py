@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from datetime import UTC, datetime
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -12,6 +12,8 @@ _CORRUPTION_SEED = 42
 
 # Corruption rate for scenarios 2-6 (scaled by row count)
 CORRUPTION_RATE = 0.35
+
+STALE_SHIFT_DAYS = 365
 
 
 def _inject_interspersed_noise(text: str) -> str:
@@ -35,7 +37,7 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     2. Blank summary on some rows.
     3. Inject noise characters throughout summary.
     4. Truncate title to < 8 characters.
-    5. Set published date to a stale value (2020-01-01).
+    5. Shift published date back 365 days (stale date).
     6. Duplicate rows.
 
     After all corruptions, text_for_embedding is rebuilt.
@@ -111,19 +113,17 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     # ---- 5. Stale date (push published far into the past) ----
     stale_count = min(scaled_count, n)
     stale_indices = rng.sample(range(n), stale_count)
-    stale_date_str = "2020-01-01"
-    now_date = datetime.now(UTC).date()
-    stale_age = (now_date - datetime(2020, 1, 1).date()).days
     stale_paper_ids = []
     for i in stale_indices:
-        df.at[i, "published"] = stale_date_str
-        df.at[i, "age_days"] = stale_age
+        original = date.fromisoformat(str(df.at[i, "published"])[:10])
+        df.at[i, "published"] = (original - timedelta(days=STALE_SHIFT_DAYS)).isoformat()
+        df.at[i, "age_days"] = int(df.at[i, "age_days"]) + STALE_SHIFT_DAYS
         stale_paper_ids.append(df.at[i, "paper_id"])
     log_entries.append({
         "corruption_type": "stale_date",
         "affected_rows": stale_count,
         "paper_ids": stale_paper_ids,
-        "description": f"Set published date to {stale_date_str} for {stale_count} rows (age_days={stale_age})",
+        "description": f"Shifted published date back {STALE_SHIFT_DAYS} days for {stale_count} rows",
     })
 
     # ---- 6. Duplicate rows ----
