@@ -43,7 +43,7 @@ def _index_and_evaluate(
     return evaluate_pipeline(settings, index, settings.paths.eval_testset, metrics_path, answers_path).summary
 
 
-def _repair_from_raw(settings: Settings) -> pd.DataFrame:
+def repair_from_raw_snapshot(settings: Settings) -> pd.DataFrame:
     # Always rebuilt from the preserved raw snapshot, never patched from corrupted rows,
     # so re-running the repair yields the same dataset every time.
     records = load_raw_records(settings.paths.raw_records_json)
@@ -59,8 +59,7 @@ def _print_comparison(baseline: dict[str, Any], corrupted: dict[str, Any], repai
     print()
 
 
-def main() -> None:
-    settings = load_settings()
+def run_corruption_flow_pipeline(settings: Settings) -> dict[str, dict[str, Any]]:
     paths = settings.paths
     for required in (paths.clean_json, paths.baseline_metrics, paths.eval_testset, paths.raw_records_json):
         _require(required)
@@ -78,7 +77,7 @@ def main() -> None:
         corrupted_df, settings, paths.corrupted_embeddings_json, paths.corrupted_metrics, paths.corrupted_answers
     )
 
-    repaired_df = _repair_from_raw(settings)
+    repaired_df = repair_from_raw_snapshot(settings)
     write_dataframe(repaired_df, paths.repaired_clean_csv, paths.repaired_clean_json)
     repaired_quality, repaired_freshness = _quality_checks(repaired_df, settings, "repaired")
     if not repaired_quality["success"]:
@@ -99,3 +98,8 @@ def main() -> None:
     )
     _print_comparison(baseline_metrics, corrupted_metrics, repaired_metrics)
     print(f"[corruption] Report -> {paths.comparison_report}")
+    return {"baseline": baseline_metrics, "corrupted": corrupted_metrics, "repaired": repaired_metrics}
+
+
+def main() -> None:
+    run_corruption_flow_pipeline(load_settings())
