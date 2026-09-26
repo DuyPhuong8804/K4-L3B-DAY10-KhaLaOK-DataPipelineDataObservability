@@ -10,6 +10,22 @@ from core.utils import write_json
 # Fixed seed for reproducible corruption patterns across demo runs
 _CORRUPTION_SEED = 42
 
+# Corruption rate for scenarios 2-6 (scaled by row count)
+CORRUPTION_RATE = 0.35
+
+
+def _inject_interspersed_noise(text: str) -> str:
+    """Inject noise tokens after every 3-4 words throughout the entire text."""
+    words = text.split()
+    if not words:
+        return text
+    new_words = []
+    for idx, word in enumerate(words, start=1):
+        new_words.append(word)
+        if idx % 3 == 0:
+            new_words.append("@#$%")
+    return " ".join(new_words)
+
 
 def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     """Simulate 6 types of data corruption on a clean dataframe.
@@ -17,7 +33,7 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     Corruption scenarios:
     1. Drop latest 20% records.
     2. Blank summary on some rows.
-    3. Inject noise characters into summary.
+    3. Inject noise characters throughout summary.
     4. Truncate title to < 8 characters.
     5. Set published date to a stale value (2020-01-01).
     6. Duplicate rows.
@@ -45,8 +61,11 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     })
     n = len(df)
 
+    # Calculate count for scenarios 2-6 based on CORRUPTION_RATE
+    scaled_count = max(1, round(n * CORRUPTION_RATE))
+
     # ---- 2. Blank summary ----
-    blank_count = min(3, n)
+    blank_count = min(scaled_count, n)
     blank_indices = rng.sample(range(n), blank_count)
     blank_paper_ids = []
     for i in blank_indices:
@@ -59,15 +78,14 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
         "description": f"Blanked summary for {blank_count} rows",
     })
 
-    # ---- 3. Inject noise into summary ----
-    noise_count = min(3, n)
+    # ---- 3. Inject noise into summary (no overlap with blank_summary) ----
     available_for_noise = [i for i in range(n) if i not in blank_indices]
-    noise_indices = rng.sample(available_for_noise, min(noise_count, len(available_for_noise)))
+    noise_count = min(scaled_count, len(available_for_noise))
+    noise_indices = rng.sample(available_for_noise, noise_count)
     noise_paper_ids = []
     for i in noise_indices:
         original = str(df.at[i, "summary"])
-        mid = len(original) // 2
-        df.at[i, "summary"] = original[:mid] + " @#$%^&*NOISE_CORRUPTED!!! " + original[mid:]
+        df.at[i, "summary"] = _inject_interspersed_noise(original)
         noise_paper_ids.append(df.at[i, "paper_id"])
     log_entries.append({
         "corruption_type": "inject_noise",
@@ -77,7 +95,7 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     })
 
     # ---- 4. Truncate title to < 8 characters ----
-    trunc_count = min(3, n)
+    trunc_count = min(scaled_count, n)
     trunc_indices = rng.sample(range(n), trunc_count)
     trunc_paper_ids = []
     for i in trunc_indices:
@@ -91,7 +109,7 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     })
 
     # ---- 5. Stale date (push published far into the past) ----
-    stale_count = min(5, n)
+    stale_count = min(scaled_count, n)
     stale_indices = rng.sample(range(n), stale_count)
     stale_date_str = "2020-01-01"
     now_date = datetime.now(UTC).date()
@@ -109,7 +127,7 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     })
 
     # ---- 6. Duplicate rows ----
-    dup_count = min(3, n)
+    dup_count = min(scaled_count, n)
     duplicates = df.head(dup_count).copy()
     dup_paper_ids = duplicates["paper_id"].tolist()
     df = pd.concat([df, duplicates], ignore_index=True)
