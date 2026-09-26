@@ -37,8 +37,7 @@ def _run_agent_demo(settings: Settings, index: LocalEmbeddingIndex, test_set: li
     print(f"[phase1] Agent demo answers -> {settings.paths.demo_answers}")
 
 
-def main() -> None:
-    settings = load_settings()
+def run_phase1_pipeline(settings: Settings) -> dict[str, Any]:
     paths = settings.paths
     run_date = now_utc()
 
@@ -55,10 +54,9 @@ def main() -> None:
     print(f"[phase1] Quality gate success={quality['success']} | fresh={freshness['is_fresh']}")
     if not quality["success"]:
         raise SystemExit(
-            f"[phase1] Baseline data failed the quality gate; not indexing it. See {paths.baseline_quality_report}"
+            f"[phase1] Baseline data failed the quality gate (gx={quality['gx_success']}, "
+            f"fresh={freshness['is_fresh']}); not indexing it. See {paths.baseline_quality_report}"
         )
-    if not freshness["is_fresh"]:
-        print("[phase1] WARNING: freshness SLA breached on baseline data.")
 
     index = LocalEmbeddingIndex.build(clean_df, settings, paths.embeddings_json)
     print(f"[phase1] Indexed {len(index.documents)} docs into collection '{index.collection_name}'")
@@ -87,3 +85,8 @@ def main() -> None:
     print(f"[phase1] Report -> {paths.baseline_report}")
 
     _run_agent_demo(settings, index, test_set)
+    return metrics
+
+
+def main() -> None:
+    run_phase1_pipeline(load_settings())
