@@ -64,7 +64,7 @@
       "10.1145/3637528.3671814",
       "10.1145/3637528.3671803"
     ],
-    "description": "Set published date to 2020-01-01 for 7 rows (age_days=2460)"
+    "description": "Shifted published date back 365 days for 7 rows"
   },
   {
     "corruption_type": "duplicate_rows",

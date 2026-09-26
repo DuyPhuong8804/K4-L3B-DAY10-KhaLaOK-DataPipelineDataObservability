@@ -1,5 +1,0 @@
-Title: Advance
-Authors: Phong Vu, Ngan Hoang
-Categories: Multi-Agent Systems, Artificial Intelligence
-Published: 2026-06-08
-Summary: An extended empirical study on single LLM is susceptible to confirmation bias when evaluating retrieved evidence. We demonstrate a multi-agent debate architecture where specialized verifier agents critique and corroborate citations Further analysis on scaling paramet
