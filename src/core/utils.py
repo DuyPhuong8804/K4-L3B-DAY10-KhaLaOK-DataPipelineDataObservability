@@ -25,6 +25,16 @@ def write_csv(df, path: Path) -> None:
     df.to_csv(path, index=False)
 
 
+def dataframe_records(df) -> list[dict[str, Any]]:
+    # Round-trip through pandas JSON so numpy scalars and NaN become plain JSON values.
+    return json.loads(df.to_json(orient="records", force_ascii=False))
+
+
+def write_dataframe(df, csv_path: Path, json_path: Path) -> None:
+    write_csv(df, csv_path)
+    write_json(json_path, dataframe_records(df))
+
+
 def write_text(path: Path, text: str) -> None:
     ensure_parent(path)
     path.write_text(text, encoding="utf-8")
