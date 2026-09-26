@@ -6,9 +6,11 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+from core.config import load_settings
+from core.utils import read_json
 from evaluation.metrics import _token_f1
 from evaluation.testset import build_test_set
-from retrieval.index import SearchResult
+from retrieval.index import LocalEmbeddingIndex, SearchResult
 from retrieval.qa import answer_question
 
 
@@ -115,3 +117,56 @@ def test_qa_promotes_exact_quoted_title_before_semantic_result() -> None:
 
     assert result.answer == "Alice, Bob"
     assert result.retrieved_doc_ids[0] == "10.1000/exact"
+
+
+def test_embedding_manifest_stores_relative_chroma_path(tmp_path, monkeypatch) -> None:
+    class FakeEmbeddings:
+        def __init__(self, model_name: str):
+            self.model_name = model_name
+
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            return [[1.0, 0.0] for _ in texts]
+
+    class FakeCollection:
+        def add(self, **kwargs) -> None:
+            self.add_payload = kwargs
+
+    class FakeClient:
+        def __init__(self):
+            self.collection = FakeCollection()
+
+        def delete_collection(self, name: str) -> None:
+            return None
+
+        def create_collection(self, name: str, configuration: dict) -> FakeCollection:
+            return self.collection
+
+        def get_collection(self, name: str) -> FakeCollection:
+            return self.collection
+
+    fake_client = FakeClient()
+    client_paths: list[str] = []
+
+    def fake_persistent_client(path: str) -> FakeClient:
+        client_paths.append(path)
+        return fake_client
+
+    monkeypatch.setattr("retrieval.embeddings.MiniLMEmbeddings", FakeEmbeddings)
+    monkeypatch.setattr("retrieval.index.chromadb.PersistentClient", fake_persistent_client)
+
+    settings = load_settings(project_dir=tmp_path)
+    papers = _papers(1).assign(
+        text_for_embedding="Title: Paper 01",
+        published="2026-01-01",
+        abs_url="https://doi.org/10.1000/01",
+        pdf_url="https://doi.org/10.1000/01",
+    )
+
+    LocalEmbeddingIndex.build(papers, settings, settings.paths.embeddings_json)
+    manifest = read_json(settings.paths.embeddings_json)
+
+    assert manifest["persist_path"] == "data/chroma"
+    assert all(path == str(settings.paths.chroma_dir) for path in client_paths)
+
+    loaded = LocalEmbeddingIndex.load(settings)
+    assert loaded.persist_path == settings.paths.project_dir / "data/chroma"
