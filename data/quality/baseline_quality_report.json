@@ -1,0 +1,53 @@
+{
+  "success": true,
+  "gx_success": true,
+  "report_name": "baseline",
+  "row_count": 24,
+  "results": [
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "column": null,
+      "success": true
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "column": "paper_id",
+      "success": true
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "column": "paper_id",
+      "success": true
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "column": "title",
+      "success": true
+    },
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "column": "title",
+      "success": true
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "column": "summary",
+      "success": true
+    },
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "column": "summary",
+      "success": true
+    }
+  ],
+  "freshness": {
+    "latest_published": "2026-07-22",
+    "oldest_published": "2026-03-28",
+    "freshness_threshold_days": 180,
+    "max_stale_ratio": 0.25,
+    "stale_rows": 1,
+    "total_rows": 24,
+    "stale_ratio": 0.0417,
+    "is_fresh": true
+  }
+}
