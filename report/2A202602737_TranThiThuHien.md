@@ -40,7 +40,7 @@ Các commit chính của tôi là `e4fc9cd` (test set, retrieval/evaluation và 
 | Sinh benchmark xác định | `build_test_set`, `data/eval/test_set.json` | 10 câu: 3 summary, 3 authors, 2 date, 2 categories | Lệnh nghiệm thu CP2 in `Sinh được 10 câu hỏi test` |
 | Đảm bảo test set đại diện | `_select_representative_rows` | Chọn rải đều trên corpus đã sort theo `paper_id`, không chỉ lấy 10 dòng đầu | Kiểm tra `ground_truth_doc_ids` trong `test_set.json` |
 | Build và persist vector index | `LocalEmbeddingIndex`, `data/chroma/` | Ba collection `papers-baseline`, `papers-corrupted`, `papers-repaired`; baseline/repaired 24 docs, corrupted 27 docs | Chạy hai pipeline và kiểm tra Chroma collection count |
-| Loại đường dẫn máy cá nhân | `data/embeddings/*.json` | Manifest ghi `data/chroma`, không chứa `C:\Users\...` | Test `test_embedding_manifest_stores_relative_chroma_path` |
+| Loại đường dẫn máy cá nhân | `data/embeddings/*.json` | Manifest ghi `data/chroma`, không chứa đường dẫn tuyệt đối của máy cá nhân | Test `test_embedding_manifest_stores_relative_chroma_path` |
 | Đo chất lượng RAG | `evaluation/metrics.py`, `data/results/*_metrics.json` | Baseline Hit Rate/F1 = 1.0/1.0; Corrupted = 0.7/0.8223; Repaired = 1.0/1.0 | Đối chiếu ba metrics JSON |
 | Kiểm thử tự động | `tests/test_evaluation.py` | 7/7 test pass | `python -m pytest -q tests` |
 
@@ -94,7 +94,7 @@ python -c "from core.config import load_settings; from evaluation.testset import
 
 ## 6. Một lỗi hoặc blocker đã xử lý
 
-- **Triệu chứng/lỗi nguyên văn:** `papers_embeddings.json` chứa `"persist_path": "C:\\Users\\Admin\\...\\data\\chroma"`, khiến manifest phụ thuộc máy cá nhân và có nguy cơ bị trừ điểm portability.
+- **Triệu chứng/lỗi nguyên văn:** `papers_embeddings.json` có `persist_path` là đường dẫn tuyệt đối trên máy phát triển (thư mục người dùng Windows), khiến manifest phụ thuộc máy cá nhân và có nguy cơ bị trừ điểm portability.
 - **Lệnh hoặc bước tái hiện:** chạy Phase 1 rồi mở `data/embeddings/papers_embeddings.json`.
 - **Nguyên nhân gốc:** `LocalEmbeddingIndex.build` serialize trực tiếp `str(settings.paths.chroma_dir)`, trong khi `chroma_dir` đã được resolve thành absolute path.
 - **Cách xử lý:** khi ghi manifest, dùng `persist_path.relative_to(settings.paths.project_dir).as_posix()`; khi load, dùng `settings.paths.project_dir / payload["persist_path"]`.
