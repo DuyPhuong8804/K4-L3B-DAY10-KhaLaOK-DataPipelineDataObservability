@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "report_name": "test",
+  "row_count": 24,
+  "results": [
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    },
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    },
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    },
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    },
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    }
+  ]
+}

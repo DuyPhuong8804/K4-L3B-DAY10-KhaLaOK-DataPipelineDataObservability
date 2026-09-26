@@ -1,0 +1,27 @@
+{
+  "success": false,
+  "report_name": "corrupted_clean_dataset",
+  "row_count": 23,
+  "results": [
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    },
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    },
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": false
+    },
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    },
+    {
+      "expectation_type": "ExpectationConfiguration",
+      "success": true
+    }
+  ]
+}
