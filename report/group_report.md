@@ -276,5 +276,5 @@ Kết luận có quan hệ nhân quả được hỗ trợ bởi artifacts:
 - [x] Bảng metrics khớp với các file trong `data/results/`.
 - [x] Quality/freshness conclusions khớp với `data/quality/`.
 - [x] Các đường dẫn báo cáo và artifact truy cập được.
-- [ ] Mỗi thành viên đã hoàn thành báo cáo vai trò riêng. *(Duy: `report/2A202602684_BuiPhuongDuy.md`; chờ Kiên và Hiền)*
+- [ ] Mỗi thành viên đã hoàn thành báo cáo vai trò riêng. *(Duy: `report/2A202602684_BuiPhuongDuy.md`; Kiên: `report/2A202602748_LeTrungKien.md`; chờ Hiền)*
 - [x] Không có `.env`, API key, token hoặc secret trong source, report, log hay ảnh.
