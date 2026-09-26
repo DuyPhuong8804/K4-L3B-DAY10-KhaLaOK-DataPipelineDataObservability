@@ -151,7 +151,7 @@ def generate_corruption_report(
         "",
         "| Metric | Corrupted | Repaired |",
         "|--------|-----------|----------|",
-        f"| Stale rows | {corrupted_freshness.get('stale_rows', 'N/A')} | {repaired_freshness.get('total_rows', 'N/A')} |",
+        f"| Stale rows | {corrupted_freshness.get('stale_rows', 'N/A')} | {repaired_freshness.get('stale_rows', 'N/A')} |",
         f"| Total rows | {corrupted_freshness.get('total_rows', 'N/A')} | {repaired_freshness.get('total_rows', 'N/A')} |",
         f"| Stale ratio | {_fmt(corrupted_freshness.get('stale_ratio'))} | {_fmt(repaired_freshness.get('stale_ratio'))} |",
         f"| Is fresh | {_pass_fail(corrupted_freshness.get('is_fresh'))} | {_pass_fail(repaired_freshness.get('is_fresh'))} |",
