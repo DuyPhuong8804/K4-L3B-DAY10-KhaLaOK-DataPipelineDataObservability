@@ -7,9 +7,9 @@
 | Thông tin         | Nội dung                  |
 | ------------------ | -------------------------- |
 | Họ và tên       | [Họ và tên]             |
-| MSSV               | [Mã số sinh viên]                     |
-| Khóa/Lớp         | [Khóa/Lớp]              |
-| Tên nhóm         | [Tên nhóm]     |
+| MSSV               | [MSSV]                     |
+| Khóa/Lớp         | [K3 hoặc K4]              |
+| Tên nhóm         | [Tên hoặc mã nhóm]     |
 | Vai trò chính    | [Vai trò]                 |
 | Repository         | [Đường dẫn repository] |
 | Ngày hoàn thành | [YYYY-MM-DD]               |
@@ -38,7 +38,7 @@ Chỉ nhận ownership cho phần bạn trực tiếp thực hiện. Liên hệ 
 | [Mô tả cụ thể] | [Đường dẫn file] | [Artifact/metrics/report] | [Lệnh/artifact] |
 | [Mô tả cụ thể] | [Đường dẫn file] | [Artifact/metrics/report] | [Lệnh/artifact] |
 
-Nêu một artifact cụ thể mà phần việc của bạn tạo ra hoặc giúp xác minh:
+Nêu một output cụ thể mà phần việc của bạn tạo ra hoặc giúp xác minh:
 
 [Mô tả artifact, metric, report hoặc kết quả tích hợp.]
 

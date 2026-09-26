@@ -20,7 +20,7 @@
 | ------------------ | --------------------- | ---------------- | ----------------- | -------------------------------------------- |
 | Ingestion & Data Cleaning | `src/ingestion/cleaning.py` (`build_clean_dataframe`) | List[PaperRecord] thô từ Crossref API | Clean DataFrame (24 dòng), 5-part `text_for_embedding`, `age_days` | Hoàn thành |
 | Data Corruption Simulation | `src/ingestion/corruption.py` (`corrupt_clean_dataframe`) | Clean DataFrame | Corrupted DataFrame (27 dòng) + `corruption_log.json` | Hoàn thành |
-| Data Quality Gate & SLA | `src/observability/quality.py` (`run_data_quality_checks`, `build_freshness_report`) | DataFrame / Clean CSV | Quality Report JSON (GX 1.x) + Freshness Report JSON | Hoàn thành |
+| Data Quality Gate & SLA | `src/observability/quality.py` (`run_data_quality_checks`, `build_freshness_report`) | DataFrame | Quality Report JSON (GX 1.x) + Freshness Report JSON | Hoàn thành |
 | Automated Reporting | `src/observability/reporting.py` (`generate_phase1_report`, `generate_corruption_report`) | Metrics dicts & Quality dicts | `phase1_report.md` & `corruption_report.md` (3-State Comparison) | Hoàn thành |
 
 ### Việc hỗ trợ ngoài phạm vi chính
@@ -41,7 +41,7 @@
 | Báo cáo tự động Data-Driven | `src/observability/reporting.py` | `data/reports/phase1_report.md` & `corruption_report.md` | `generate_corruption_report` -> Render bảng so sánh 3 trạng thái & phân tích động |
 
 Nêu một artifact cụ thể mà phần việc của bạn tạo ra:
-- **`data/reports/corruption_report.md`**: Báo cáo Markdown tự động so sánh 3 trạng thái (Baseline vs Corrupted vs Repaired), bóc tách từng Expectation bị FAIL của Great Expectations 1.x và trình bày sự suy giảm chỉ số RAG (Hit Rate từ 1.0000 -> 0.7000) cùng sự phục hồi sau khi Idempotent Repair.
+- **`data/reports/corruption_report.md`**: Báo cáo Markdown tự động so sánh 3 trạng thái (Baseline vs Corrupted vs Repaired), bóc tách từng Expectation bị FAIL của Great Expectations 1.x và trình trình bày sự suy giảm chỉ số RAG (Hit Rate từ 1.0000 -> 0.7000) cùng sự phục hồi sau khi Idempotent Repair.
 
 ## 4. Giải thích phần kỹ thuật đã thực hiện
 
@@ -106,10 +106,10 @@ python script/run_corruption_flow.py
 ## 7. Hiểu biết về luồng end-to-end
 
 1. **Dữ liệu đi từ Crossref đến vector index:** Raw JSON từ Crossref API -> `cleaning.py` làm sạch XML, chuẩn hóa schema, tạo `text_for_embedding` 5 phần -> ChromaDB Vector Store mã hóa văn bản thành Vector Embeddings và lưu trữ cùng metadata (`paper_id`, `title`, `published`).
-2. **Evaluation set và ground-truth document IDs:** Tập test set chứa danh sách câu hỏi kèm `ground_truth` và `gold_paper_ids`. Hệ thống đo `retrieval_hit_rate` bằng cách kiểm tra xem bài báo chứa câu trả lời đúng có nằm trong Top-K kết quả do Vector DB truy vấn ra hay không.
+2. **Evaluation set và ground-truth document IDs:** Tập test set chứa danh sách câu hỏi kèm `ground_truth` và `ground_truth_doc_ids`. Hệ thống đo `retrieval_hit_rate` bằng cách kiểm tra xem bài báo chứa câu trả lời đúng có nằm trong Top-K kết quả do Vector DB truy vấn ra hay không.
 3. **Quality checks vs freshness monitoring:** Quality checks (GX 1.x) kiểm tra tính đúng đắn của cấu trúc và giá trị dữ liệu (Null, Unique, Length), trong khi Freshness Monitoring đo lường độ tươi mới của dữ liệu theo thời gian thực tế so với ngưỡng SLA (180 ngày).
 4. **Vì sao dùng cùng test set:** Để đảm bảo tính công bằng và nhất quán tuyệt đối khi so sánh hiệu năng RAG giữa 3 trạng thái (Baseline, Corrupted, Repaired).
-5. **Repair thành công dựa trên:** Artifact `repaired_clean.csv`, `repaired_quality_report.json` (`success=True`), `repaired_freshness_report.json` (`is_fresh=True`) và chỉ số `retrieval_hit_rate` phục hồi về mức 1.0000 (bằng Baseline).
+5. **Repair thành công dựa trên:** Artifact `papers_clean_repaired.csv`, `repaired_quality_report.json` (`success=True`), `repaired_freshness_report.json` (`is_fresh=True`) và chỉ số `retrieval_hit_rate` phục hồi về mức 1.0000 (bằng Baseline).
 
 ## 8. Phân tích kết quả
 
@@ -119,8 +119,8 @@ python script/run_corruption_flow.py
 | ---------------------- | -------: | --------: | -------: | ------------------------- |
 | `retrieval_hit_rate` |   1.0000 |    0.7000 |   1.0000 | Suy giảm 30% khi bị corruption và phục hồi 100% sau repair |
 | `mean_token_f1`      |   1.0000 |    0.8223 |   1.0000 | Giảm đáng kể do câu trả lời bị dính noise rác, phục hồi hoàn toàn sau repair |
-| `judge_accuracy`     |   1.0000 |    0.8000 |   1.0000 | LLM Judge đánh giá chính xác sự suy giảm chất lượng câu trả lời |
-| `mean_judge_score`   |   5.0000 |    4.0000 |   5.0000 | Điểm đánh giá trung bình giảm từ 5/5 xuống 4/5 khi dính dữ liệu bẩn |
+| `judge_accuracy`     |   1.0000 |    0.8000 |   1.0000 | Đánh giá qua heuristic fallback (do không dùng API key) giảm xuống 0.8000 |
+| `mean_judge_score`   |   5.0000 |    4.2000 |   5.0000 | Điểm đánh giá trung bình giảm từ 5.0 xuống 4.2 khi dính dữ liệu bẩn |
 | Quality checks         |     PASS |      FAIL |     PASS | Cổng GX 1.x bắt chính xác 3 loại lỗi dữ liệu bẩn |
 | Freshness status       |     PASS |      FAIL |     PASS | Phát hiện chính xác dữ liệu vi phạm SLA quá 180 ngày |
 
@@ -129,7 +129,7 @@ python script/run_corruption_flow.py
 1. **Data corruption** -> Quality Gate báo **FAIL** (lỗi unique paper_id, summary/title length) & Freshness SLA báo **FAIL** (`is_fresh=False`) -> Agent `retrieval_hit_rate` sụp đổ từ 1.0000 xuống 0.7000.
 2. **Repair action** (re-ingest từ raw snapshot) -> Quality Gate & Freshness SLA phục hồi **PASS** -> Agent `retrieval_hit_rate` và `mean_token_f1` phục hồi hoàn toàn về 1.0000.
 
-- **Corruption ảnh hưởng rõ nhất:** `inject_noise` (chèn rác rải rác toàn bộ summary) và `truncate_title`, vì chúng trực tiếp phá hỏng không gian Vector Embedding và ngữ nghĩa câu từ khiến ChromaDB truy vấn sai bài báo.
+- **Corruption ảnh hưởng rõ nhất:** 3 câu bị mất retrieval hoàn toàn là **q03**, **q08** (bài báo tương ứng vừa bị `truncate_title` vừa bị `blank_summary`, làm thất bại cả tra cứu tiêu đề lẫn ngữ nghĩa semantic) và **q04** (bài báo bị xóa do `drop_latest`). Kịch bản `inject_noise` làm giảm Token F1 ở q01 (0.968) và q09 (0.970) nhưng không làm mất retrieval.
 - **Kết quả khác với kỳ vọng:** Lần đầu chạy test chỉ số không giảm do noise chỉ chèn ở giữa. Sau khi refactor chèn noise rải rác sau mỗi 3-4 từ, chỉ số đã sụp đổ đúng như kỳ vọng lý thuyết.
 
 ## 9. Điều học được và hướng cải thiện
