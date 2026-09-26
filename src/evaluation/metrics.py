@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from statistics import mean
 import os
 import sys
+import time
 import types
 from typing import TYPE_CHECKING, Any
 
@@ -16,6 +17,9 @@ from retrieval.qa import answer_question
 
 if TYPE_CHECKING:
     from retrieval.index import LocalEmbeddingIndex
+
+JUDGE_ATTEMPTS = 3
+FALLBACK_JUDGE_REASONING = "Fallback heuristic judge used because the LLM evaluator was unavailable."
 
 
 class JudgeVerdict(BaseModel):
@@ -60,14 +64,21 @@ Return:
 """.strip()
     try:
         llm = build_llm(settings=settings, temperature=0.0).with_structured_output(JudgeVerdict)
-        return llm.invoke(prompt)
     except Exception:
-        score = 5 if _token_f1(reference, prediction) >= 0.95 else 3 if _token_f1(reference, prediction) >= 0.5 else 1
-        return JudgeVerdict(
-            score=score,
-            correct=score >= 3,
-            reasoning="Fallback heuristic judge used because the LLM evaluator was unavailable.",
-        )
+        llm = None
+    # Only transient call failures are retried; a missing key falls back immediately.
+    for attempt in range(JUDGE_ATTEMPTS if llm is not None else 0):
+        try:
+            return llm.invoke(prompt)
+        except Exception:
+            if attempt + 1 < JUDGE_ATTEMPTS:
+                time.sleep(2**attempt)
+    score = 5 if _token_f1(reference, prediction) >= 0.95 else 3 if _token_f1(reference, prediction) >= 0.5 else 1
+    return JudgeVerdict(
+        score=score,
+        correct=score >= 3,
+        reasoning=FALLBACK_JUDGE_REASONING,
+    )
 
 
 def _run_ragas(settings: Settings, answers: list[dict[str, Any]]) -> dict[str, Any]:
@@ -140,6 +151,7 @@ def evaluate_pipeline(
         "mean_token_f1": mean(item["token_f1"] for item in answers),
         "judge_accuracy": mean(1.0 if item["judge"]["correct"] else 0.0 for item in answers),
         "mean_judge_score": mean(item["judge"]["score"] for item in answers),
+        "judge_fallbacks": sum(item["judge"]["reasoning"] == FALLBACK_JUDGE_REASONING for item in answers),
     }
     summary["ragas"] = _run_ragas(settings, answers)
 

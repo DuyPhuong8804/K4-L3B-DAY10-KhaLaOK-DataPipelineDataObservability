@@ -56,4 +56,5 @@ def run_agent_question(agent: Any, question: str) -> str:
     if not messages:
         return ""
     final_message = messages[-1]
-    return getattr(final_message, "content", str(final_message))
+    # Gemini 3 returns content as a list of parts with opaque signatures; .text joins the text parts.
+    return str(getattr(final_message, "text", final_message))
