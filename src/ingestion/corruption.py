@@ -33,11 +33,14 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     # ---- 1. Drop latest 20% records ----
     drop_count = max(1, int(n * 0.2))
     df_sorted = df.sort_values("published", ascending=False)
-    drop_ids = df_sorted.head(drop_count).index.tolist()
+    dropped_rows = df_sorted.head(drop_count)
+    drop_ids = dropped_rows.index.tolist()
+    dropped_paper_ids = dropped_rows["paper_id"].tolist()
     df = df.drop(drop_ids).reset_index(drop=True)
     log_entries.append({
         "corruption_type": "drop_latest",
         "affected_rows": drop_count,
+        "paper_ids": dropped_paper_ids,
         "description": f"Dropped {drop_count} latest records (top 20% by published date)",
     })
     n = len(df)
@@ -45,11 +48,14 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     # ---- 2. Blank summary ----
     blank_count = min(3, n)
     blank_indices = rng.sample(range(n), blank_count)
+    blank_paper_ids = []
     for i in blank_indices:
         df.at[i, "summary"] = ""
+        blank_paper_ids.append(df.at[i, "paper_id"])
     log_entries.append({
         "corruption_type": "blank_summary",
         "affected_rows": blank_count,
+        "paper_ids": blank_paper_ids,
         "description": f"Blanked summary for {blank_count} rows",
     })
 
@@ -57,24 +63,30 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     noise_count = min(3, n)
     available_for_noise = [i for i in range(n) if i not in blank_indices]
     noise_indices = rng.sample(available_for_noise, min(noise_count, len(available_for_noise)))
+    noise_paper_ids = []
     for i in noise_indices:
         original = str(df.at[i, "summary"])
         mid = len(original) // 2
         df.at[i, "summary"] = original[:mid] + " @#$%^&*NOISE_CORRUPTED!!! " + original[mid:]
+        noise_paper_ids.append(df.at[i, "paper_id"])
     log_entries.append({
         "corruption_type": "inject_noise",
         "affected_rows": len(noise_indices),
+        "paper_ids": noise_paper_ids,
         "description": f"Injected noise characters into summary of {len(noise_indices)} rows",
     })
 
     # ---- 4. Truncate title to < 8 characters ----
     trunc_count = min(3, n)
     trunc_indices = rng.sample(range(n), trunc_count)
+    trunc_paper_ids = []
     for i in trunc_indices:
         df.at[i, "title"] = str(df.at[i, "title"])[:7]
+        trunc_paper_ids.append(df.at[i, "paper_id"])
     log_entries.append({
         "corruption_type": "truncate_title",
         "affected_rows": trunc_count,
+        "paper_ids": trunc_paper_ids,
         "description": f"Truncated title to <8 chars for {trunc_count} rows",
     })
 
@@ -84,22 +96,27 @@ def corrupt_clean_dataframe(df: pd.DataFrame, output_log_path) -> pd.DataFrame:
     stale_date_str = "2020-01-01"
     now_date = datetime.now(UTC).date()
     stale_age = (now_date - datetime(2020, 1, 1).date()).days
+    stale_paper_ids = []
     for i in stale_indices:
         df.at[i, "published"] = stale_date_str
         df.at[i, "age_days"] = stale_age
+        stale_paper_ids.append(df.at[i, "paper_id"])
     log_entries.append({
         "corruption_type": "stale_date",
         "affected_rows": stale_count,
+        "paper_ids": stale_paper_ids,
         "description": f"Set published date to {stale_date_str} for {stale_count} rows (age_days={stale_age})",
     })
 
     # ---- 6. Duplicate rows ----
     dup_count = min(3, n)
     duplicates = df.head(dup_count).copy()
+    dup_paper_ids = duplicates["paper_id"].tolist()
     df = pd.concat([df, duplicates], ignore_index=True)
     log_entries.append({
         "corruption_type": "duplicate_rows",
         "affected_rows": dup_count,
+        "paper_ids": dup_paper_ids,
         "description": f"Duplicated first {dup_count} rows",
     })
 

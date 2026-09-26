@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import great_expectations as gx
@@ -16,7 +15,7 @@ from core.config import Settings
 from core.utils import write_json
 
 
-def run_data_quality_checks(df_or_path: pd.DataFrame | Path | str, settings: Settings, report_name: str) -> dict[str, Any]:
+def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: str) -> dict[str, Any]:
     """Run data quality checks using Great Expectations 1.x ephemeral context.
 
     Expectations:
@@ -24,13 +23,10 @@ def run_data_quality_checks(df_or_path: pd.DataFrame | Path | str, settings: Set
     2. paper_id not null.
     3. paper_id unique.
     4. title not null.
-    5. summary length >= 10 characters.
+    5. title length >= 8 characters.
+    6. summary not null.
+    7. summary length >= 10 characters.
     """
-    if isinstance(df_or_path, (str, Path)):
-        df = pd.read_csv(df_or_path)
-    else:
-        df = df_or_path
-
     # --- GX 1.x ephemeral context setup ---
     context = gx.get_context(mode="ephemeral")
 
@@ -44,9 +40,10 @@ def run_data_quality_checks(df_or_path: pd.DataFrame | Path | str, settings: Set
     suite.add_expectation(ExpectColumnValuesToNotBeNull(column="paper_id"))
     suite.add_expectation(ExpectColumnValuesToBeUnique(column="paper_id"))
     suite.add_expectation(ExpectColumnValuesToNotBeNull(column="title"))
+    suite.add_expectation(ExpectColumnValueLengthsToBeBetween(column="title", min_value=8))
+    suite.add_expectation(ExpectColumnValuesToNotBeNull(column="summary"))
     suite.add_expectation(ExpectColumnValueLengthsToBeBetween(column="summary", min_value=10))
 
-    batch_request = batch_def.build_batch_request(batch_parameters={"dataframe": df})
     validation_def = context.validation_definitions.add(
         gx.ValidationDefinition(
             name=f"{report_name}_validation",
@@ -59,8 +56,10 @@ def run_data_quality_checks(df_or_path: pd.DataFrame | Path | str, settings: Set
     # --- Build result dictionary ---
     result_list = []
     for r in results.results:
+        cfg = r.expectation_config
         entry: dict[str, Any] = {
-            "expectation_type": type(r.expectation_config).__name__,
+            "expectation_type": cfg.type if hasattr(cfg, "type") else type(cfg).__name__,
+            "column": cfg.kwargs.get("column") if hasattr(cfg, "kwargs") else None,
             "success": r.success,
         }
         result_list.append(entry)
