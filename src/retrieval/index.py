@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import chromadb
 import pandas as pd
 
 from core.config import Settings
 from core.utils import read_json, safe_slug, write_json
-from retrieval.embeddings import MiniLMEmbeddings
+
+if TYPE_CHECKING:
+    from retrieval.embeddings import MiniLMEmbeddings
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,8 @@ class LocalEmbeddingIndex:
         documents: list[dict[str, Any]],
         persist_path: Path,
     ):
+        from retrieval.embeddings import MiniLMEmbeddings
+
         self.settings = settings
         self.collection_name = collection_name
         self.documents = documents
@@ -87,6 +91,8 @@ class LocalEmbeddingIndex:
         settings: Settings,
         embeddings_output_path: Path | None = None,
     ) -> "LocalEmbeddingIndex":
+        from retrieval.embeddings import MiniLMEmbeddings
+
         collection_name = cls._derive_collection_name(settings, embeddings_output_path)
         documents = cls._build_documents(df)
         persist_path = settings.paths.chroma_dir

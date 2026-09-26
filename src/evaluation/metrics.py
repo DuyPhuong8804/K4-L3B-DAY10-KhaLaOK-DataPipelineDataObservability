@@ -5,17 +5,17 @@ from statistics import mean
 import os
 import sys
 import types
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from datasets import Dataset
 from pydantic import BaseModel, Field
 
 from core.config import Settings
 from core.utils import normalize_whitespace, read_json, write_json
-from retrieval.embeddings import MiniLMEmbeddings
-from retrieval.index import LocalEmbeddingIndex
 from retrieval.llm import build_llm
 from retrieval.qa import answer_question
+
+if TYPE_CHECKING:
+    from retrieval.index import LocalEmbeddingIndex
 
 
 class JudgeVerdict(BaseModel):
@@ -74,6 +74,10 @@ def _run_ragas(settings: Settings, answers: list[dict[str, Any]]) -> dict[str, A
     if os.getenv("RUN_RAGAS", "").lower() not in {"1", "true", "yes"}:
         return {"skipped": "Set RUN_RAGAS=1 to enable the slower Ragas pass."}
     try:
+        from datasets import Dataset
+
+        from retrieval.embeddings import MiniLMEmbeddings
+
         if "langchain_community.chat_models.vertexai" not in sys.modules:
             shim = types.ModuleType("langchain_community.chat_models.vertexai")
             shim.ChatVertexAI = type("ChatVertexAI", (), {})
