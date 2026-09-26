@@ -14,6 +14,26 @@ import pandas as pd
 from core.config import Settings
 from core.utils import write_json
 
+MAX_STALE_RATIO = 0.25
+
+
+def evaluate_freshness_sla(df: pd.DataFrame, settings: Settings) -> dict[str, Any]:
+    """Freshness SLA: the batch is stale when more than 25% of papers are older than the threshold."""
+    threshold = settings.freshness_threshold_days
+    total = len(df)
+    stale_count = int((df["age_days"] > threshold).sum()) if total else 0
+    stale_ratio = stale_count / total if total else 0.0
+    return {
+        "latest_published": str(df["published"].max()) if total else None,
+        "oldest_published": str(df["published"].min()) if total else None,
+        "freshness_threshold_days": threshold,
+        "max_stale_ratio": MAX_STALE_RATIO,
+        "stale_rows": stale_count,
+        "total_rows": total,
+        "stale_ratio": round(stale_ratio, 4),
+        "is_fresh": stale_ratio <= MAX_STALE_RATIO,
+    }
+
 
 def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: str) -> dict[str, Any]:
     """Run data quality checks using Great Expectations 1.x ephemeral context.
@@ -26,6 +46,8 @@ def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: s
     5. title length >= 8 characters.
     6. summary not null.
     7. summary length >= 10 characters.
+
+    The gate passes only when all expectations pass AND the freshness SLA holds.
     """
     # --- GX 1.x ephemeral context setup ---
     context = gx.get_context(mode="ephemeral")
@@ -64,11 +86,14 @@ def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: s
         }
         result_list.append(entry)
 
+    freshness = evaluate_freshness_sla(df, settings)
     report: dict[str, Any] = {
-        "success": results.success,
+        "success": bool(results.success and freshness["is_fresh"]),
+        "gx_success": results.success,
         "report_name": report_name,
         "row_count": len(df),
         "results": result_list,
+        "freshness": freshness,
     }
 
     # Save report to quality directory
@@ -79,39 +104,6 @@ def run_data_quality_checks(df: pd.DataFrame, settings: Settings, report_name: s
 
 
 def build_freshness_report(df: pd.DataFrame, settings: Settings, report_path) -> dict[str, Any]:
-    """Compute freshness report based on age_days and threshold.
-
-    A dataset is considered NOT fresh (is_fresh=False) when more than 25%
-    of its papers have age_days exceeding the freshness_threshold_days (180).
-    """
-    threshold = settings.freshness_threshold_days  # default 180
-    total = len(df)
-
-    if total == 0:
-        report: dict[str, Any] = {
-            "latest_published": None,
-            "oldest_published": None,
-            "freshness_threshold_days": threshold,
-            "stale_rows": 0,
-            "total_rows": 0,
-            "stale_ratio": 0.0,
-            "is_fresh": True,
-        }
-        write_json(report_path, report)
-        return report
-
-    stale_count = int((df["age_days"] > threshold).sum())
-    stale_ratio = stale_count / total
-
-    report = {
-        "latest_published": str(df["published"].max()),
-        "oldest_published": str(df["published"].min()),
-        "freshness_threshold_days": threshold,
-        "stale_rows": stale_count,
-        "total_rows": total,
-        "stale_ratio": round(stale_ratio, 4),
-        "is_fresh": stale_ratio <= 0.25,
-    }
-
+    report = evaluate_freshness_sla(df, settings)
     write_json(report_path, report)
     return report
